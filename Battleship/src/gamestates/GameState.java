@@ -3,17 +3,14 @@ package gamestates;
 import javax.swing.JPanel;
 
 public class GameState extends JPanel {
-	
-	public void enterGameLoop(){
+	boolean running = true;
+	public void activate(){
 		int LogicHertz = 30;
 		int RenderHertz = 60;
 		int Time_Between_Logic = 1000000000/LogicHertz;
 		int Time_Between_Render = 1000000000/RenderHertz;
 		long lastRenderTime = System.nanoTime();
 		long lastLogicTime = System.nanoTime();
-		
-		
-		boolean running = true;
 		while(running){
 			logicUpdate();
 			lastLogicTime = System.nanoTime();
@@ -27,6 +24,7 @@ public class GameState extends JPanel {
 				}
 			}
 		}
+		
 	}
 	public void logicUpdate(){
 		
