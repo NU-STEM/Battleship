@@ -1,0 +1,7 @@
+package gamestates;
+
+import javax.swing.JPanel;
+
+public class MainMenu extends JPanel {
+
+}
