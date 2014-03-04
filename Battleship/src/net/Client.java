@@ -1,3 +1,7 @@
+/*	Notes
+ *  Grid size: 25x25
+ * 
+*/
 package net;
 
 import java.io.*;
