@@ -13,10 +13,10 @@ import java.nio.ByteBuffer;
 public class Client<T> {
 	
 	// Packet info
-	public static final int MAX_PACKET_SIZE = 65535;
+	public static final int MAX_PACKET_SIZE = 1024;
 	
 	// These fields hard code in the network discovery ports
-	public static final int BROADCAST_PORT = 1100, RESPONSE_PORT = 1000;
+	public static final int BROADCAST_PORT = 11100, RESPONSE_PORT = 11000;
 	
 	// These fields hold the UDP socket references
 	MulticastSocket multiSocket;
@@ -32,20 +32,31 @@ public class Client<T> {
 	// Any other fields
 	int gamePort;
 	
-	public void connect() throws IOException {
+	public void connect() throws IOException, ClassNotFoundException {
 		
 		// Initialize UDP sockets
-		// group = InetAddress.getByName("123.0.0.1"); Unnecessary? TODO
-		dataSocket = new DatagramSocket(BROADCAST_PORT);
+		// group = InetAddress.getByName("224.0.0.0"); Unnecessary? TODO
+		group = InetAddress.getByName("224.0.0.0");
+		dataSocket = new DatagramSocket(RESPONSE_PORT);
 		
-		// Wait for game info packet
-		byte[] buffer = new byte[MAX_PACKET_SIZE];
-		DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+		// Sends packet
+		byte[] buffer = new byte[0];
+		DatagramPacket packet = new DatagramPacket(buffer, buffer.length, group, BROADCAST_PORT);
+		dataSocket.send(packet);
+		
+		// Get game info packet
+		buffer = new byte[MAX_PACKET_SIZE];
+		packet = new DatagramPacket(buffer, buffer.length);
 		dataSocket.receive(packet);
+		
+		// Get game data
+		ByteArrayInputStream bis = new ByteArrayInputStream(buffer);
+		in = new ObjectInputStream(bis);
+		GameData gameData = (GameData) in.readObject();
 		
 		// Get game port and address
 		InetAddress clientAddress = packet.getAddress();
-		int clientPort = packet.getData()[0];
+		int clientPort = gameData.getGamePort();
 		
 		// Connect using TCP
 		socket = new Socket(clientAddress, clientPort);
@@ -60,24 +71,27 @@ public class Client<T> {
 	public void host(int gamePort) throws IOException {
 		
 		// Initialize UDP sockets
-		group = InetAddress.getByName("123.0.0.1");
+		dataSocket = new DatagramSocket();
+		group = InetAddress.getByName("224.0.0.0");
 		multiSocket = new MulticastSocket(BROADCAST_PORT);
 		multiSocket.joinGroup(group);
-		dataSocket = new DatagramSocket(RESPONSE_PORT);
 		
-		// Send hosting packet
-		byte[] buffer = new byte[MAX_PACKET_SIZE];
-		buffer = ByteBuffer.allocate(4).putInt(gamePort).array();
-		DatagramPacket packet = new DatagramPacket(buffer, buffer.length, group, RESPONSE_PORT);
-		multiSocket.send(packet);
-		
-		// Wait for response packet
-		buffer = new byte[MAX_PACKET_SIZE];
-		packet = new DatagramPacket(buffer, buffer.length);
-		dataSocket.receive(packet);
+		// Wait for connection
+		byte[] buffer = new byte[0];
+		DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+		multiSocket.receive(packet);
 		
 		// Get other client info
-		//InetAddress clientAddress = packet.getAddress(); Unnecessary? TODO
+		InetAddress clientAddress = packet.getAddress();
+		
+		// Send hosting packet
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		bos.flush();
+		out = new ObjectOutputStream(bos);
+		out.writeObject(new GameData(gamePort));
+		buffer = bos.toByteArray();
+		packet = new DatagramPacket(buffer, buffer.length, clientAddress, RESPONSE_PORT);
+		dataSocket.send(packet);
 		
 		// Wait for TCP connection
 		serverSocket = new ServerSocket(gamePort);
